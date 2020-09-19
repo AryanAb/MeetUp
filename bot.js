@@ -61,7 +61,8 @@ client.on('message', msg => {
 						return;
 					}
 
-					const d = new Date(input.time.replace(/"/g, ''));
+					const d = new Date(input.time.replace(/"/g, '') + ' GMT-4:00');
+					console.log(d);
 					if (Object.prototype.toString.call(d) === "[object Date]") {
 						// it is a date
 						if (isNaN(d.getTime())) {  // d.valueOf() could also work
@@ -86,7 +87,7 @@ client.on('message', msg => {
 					}
 
 
-					const dj = new Date(newEvent.time);
+					const dj = new Date(newEvent.time + ' GMT-04:00');
 					const reminderMili = (newEvent.reminder.split(':')[0] * 60 * 60 + newEvent.reminder.split(':')[1] * 60) * 1000;
 
 					if (new Date(dj.getTime() - reminderMili) < new Date()) {
@@ -99,16 +100,20 @@ client.on('message', msg => {
 						eventEmbed(msg.channel, newEvent);
 					}
 				} else {
-					const index = events.indexOf(event)
-					if (input.time) {
-						events[index].time = input.time.replace(/"/g, '');
-						events[index].job.cancel();
-						events[index].job = schedule.scheduleJob(events[index].time, ping.bind(null, msg));
-					}
+					const index = events.indexOf(event);
+
 					events[index].place = input.place || events[index].place;
 					events[index].notes = input.notes || events[index].notes;
 					events[index].ping = input.ping || events[index].ping;
 					events[index].reminder = input.reminder || events[index].reminder;
+
+					if (input.time) {
+						events[index].time = input.time.replace(/"/g, '');
+						events[index].job.cancel();
+						const dj = new Date(events[index].time + ' GMT-04:00');
+						const reminderMili = (events[index].reminder.split(':')[0] * 60 * 60 + events[index].reminder.split(':')[1] * 60) * 1000;
+						events[index].job = schedule.scheduleJob(new Date(dj.getTime() - reminderMili), ping.bind(null, msg));
+					}
 					msg.channel.send('Event successfully updated.');
 					eventEmbed(msg.channel, events[index]);
 				}
@@ -157,8 +162,8 @@ client.on('message', msg => {
 
 function ping(msg) {
 	let event = events[0];
-	const pingChannel = client.channels.cache.get('657394007093149697');
-	//const pingChannel = client.channels.cache.get('466890446199717888');
+	//const pingChannel = client.channels.cache.get('657394007093149697');
+	const pingChannel = client.channels.cache.get('466890446199717888');
 	let pingStr = "";
 	if (event.ping.replace(/"/g, '') === 'everyone') {
 		pingStr = '@everyone';
